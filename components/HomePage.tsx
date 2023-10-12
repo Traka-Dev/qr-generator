@@ -1,30 +1,55 @@
 "use client"
 import Image from "next/image"
-import { FormEvent, FC, useState } from "react"
+import { FormEvent, FC, useState, ChangeEvent } from "react"
+import { Toaster, toast } from "sonner"
 
-interface FormValues {
-  url: {
-    value: string | ""
-  }
-  logo: {
-    value: string | ""
-    files?: Array<Blob | MediaSource>
-  }
+interface FileInput extends HTMLInputElement {
+  files: FileList
 }
 
 export const HomePage: FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [url, setUrl] = useState<string | null>(null)
+  const [logo, setLogo] = useState<File | null>(null)
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    console.dir("GEN")
+    if(!url || url.length <= 0){
+      toast.error("el link no puede estar vacio.")
+      return
+    }
+  }
 
-    const { url, logo } = event.currentTarget.elements as unknown as FormValues
+  const handleUpdateUrl = (url: string | null) => {
+    if (url) setUrl(url)
+  }
 
-    let imgLogo = null
+  const handleUploadFile = (uploaded: FileList | null) => {
+    if (uploaded === null) {
+      setImageUrl(null)
+      setLogo(null)
+      return
+    }
+    let imgLogo: string | null = null
+    if (uploaded && uploaded.length > 0) {
+      imgLogo = URL.createObjectURL(uploaded[0])
+    }
 
-    if (logo?.files && logo.files.length > 0) {
-      imgLogo = URL.createObjectURL(logo.files[0])
+    if (
+      imgLogo &&
+      uploaded?.length > 0 &&
+      uploaded[0].type.startsWith("image/")
+    ) {
       setImageUrl(imgLogo)
+      setLogo(uploaded[0])
+    } else {
+      setImageUrl("")
+      setLogo(null)
+      console.log("ERRPR!")
+      toast.error(
+        "El tipo de archivo de la imagen no es válido. Se esperaba un archivo PNG o JPG."
+      )
     }
   }
 
@@ -54,17 +79,21 @@ export const HomePage: FC = () => {
         <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label
-              htmlFor="url"
+              htmlFor="link"
               aria-required
               className="block text-sm font-semibold leading-6 text-gray-200"
             >
-              URL
+              Link
             </label>
             <div className="mt-2.5">
               <input
                 type="text"
-                name="url"
-                id="url"
+                name="link"
+                value={url ? url : ""}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  handleUpdateUrl(e?.target?.value)
+                }
+                id="link"
                 autoComplete="organization"
                 className="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
@@ -81,6 +110,9 @@ export const HomePage: FC = () => {
               <input
                 type="file"
                 name="logo"
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  handleUploadFile(e.target.files)
+                }
                 id="logo"
                 className="block w-full rounded-md border-0 px-3.5 py-2 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
@@ -96,7 +128,12 @@ export const HomePage: FC = () => {
           </button>
         </div>
       </form>
-      <div>{imageUrl && <Image src={imageUrl} width={100} height={100} alt="Uploaded image" />}</div>
+      <div>
+        {imageUrl && (
+          <Image src={imageUrl} width={100} height={100} alt="Uploaded image" />
+        )}
+      </div>
+      <Toaster position="top-right" richColors />
     </div>
   )
 }
