@@ -1,28 +1,33 @@
 "use client"
-import Image from "next/image"
 import { FormEvent, FC, useState, ChangeEvent } from "react"
 import { Toaster, toast } from "sonner"
-
-interface FileInput extends HTMLInputElement {
-  files: FileList
-}
+import { QRCodeCanvas } from "qrcode.react"
+import { useColor } from "react-color-palette"
+import { FormComp } from "./FormComp"
+import { QRColorPicker } from "./QRColorPicker"
 
 export const HomePage: FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [url, setUrl] = useState<string | null>(null)
-  const [logo, setLogo] = useState<File | null>(null)
+  const [logo, setLogo] = useState<string | null>(null)
+  const [bgColor, setBgColor] = useColor("#fff")
+  const [qrColor, setQrColor] = useColor("#000")
+  const [showQr, setShowQr] = useState<boolean>(false)
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     console.dir("GEN")
-    if(!url || url.length <= 0){
+    if (!url || url.length <= 0) {
       toast.error("el link no puede estar vacio.")
       return
     }
+    // gen logo
+    setShowQr(true)
   }
 
   const handleUpdateUrl = (url: string | null) => {
-    if (url) setUrl(url)
+    setUrl(url)
+    setShowQr(false)
   }
 
   const handleUploadFile = (uploaded: FileList | null) => {
@@ -42,7 +47,7 @@ export const HomePage: FC = () => {
       uploaded[0].type.startsWith("image/")
     ) {
       setImageUrl(imgLogo)
-      setLogo(uploaded[0])
+      setLogo(imgLogo)
     } else {
       setImageUrl("")
       setLogo(null)
@@ -51,6 +56,19 @@ export const HomePage: FC = () => {
         "El tipo de archivo de la imagen no es válido. Se esperaba un archivo PNG o JPG."
       )
     }
+  }
+
+  const handleDownload = () => {
+    console.log("Starting download process")
+    const canvas = document.getElementById("resultQR") as any
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    const downloadLink = document.createElement("a")
+    downloadLink.download = "QRCode.png"
+    downloadLink.href = canvas.toDataURL("image/png")
+    downloadLink.click()
+    console.log("Download link clicked")
   }
 
   return (
@@ -75,62 +93,41 @@ export const HomePage: FC = () => {
           Totalmente Gratis!
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="mx-auto mt-16 max-w-xl sm:mt-20">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label
-              htmlFor="link"
-              aria-required
-              className="block text-sm font-semibold leading-6 text-gray-200"
-            >
-              Link
-            </label>
-            <div className="mt-2.5">
-              <input
-                type="text"
-                name="link"
-                value={url ? url : ""}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  handleUpdateUrl(e?.target?.value)
-                }
-                id="link"
-                autoComplete="organization"
-                className="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              />
-            </div>
+      <div className="flex w-full flex-wrap justify-center mt-10">
+        <FormComp
+          handleSubmit={handleSubmit}
+          handleUpdateUrl={handleUpdateUrl}
+          handleUploadFile={handleUploadFile}
+          url={url}
+        />
+        <QRColorPicker
+          bgColor={bgColor}
+          setBgColor={setBgColor}
+          qrColor={qrColor}
+          setQrColor={setQrColor}
+        />
+        {showQr && (
+          <div className="flex justify-center p-4 flex-col items-center gap-4">
+            <QRCodeCanvas
+              id="resultQR"
+              size={500}
+              value={url ? url : ""}
+              includeMargin
+              bgColor={bgColor?.hex ? bgColor.hex : "#fff"}
+              fgColor={qrColor?.hex ? qrColor.hex : "#000"}
+              imageSettings={{
+                src: logo ? logo : "",
+                height: 70,
+                width: 70,
+                excavate: logo ? true : false,
+              }}
+              style={{
+                maxWidth: "200px",
+                maxHeight: "200px",
+              }}
+            />
+            <button onClick={handleDownload}>DESCARGAR</button>
           </div>
-          <div className="sm:col-span-2">
-            <label
-              htmlFor="Logo"
-              className="block text-sm font-semibold leading-6 text-gray-200"
-            >
-              Logo
-            </label>
-            <div className="mt-2.5">
-              <input
-                type="file"
-                name="logo"
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  handleUploadFile(e.target.files)
-                }
-                id="logo"
-                className="block w-full rounded-md border-0 px-3.5 py-2 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="mt-10">
-          <button
-            type="submit"
-            className="block w-full rounded-md bg-indigo-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Generar
-          </button>
-        </div>
-      </form>
-      <div>
-        {imageUrl && (
-          <Image src={imageUrl} width={100} height={100} alt="Uploaded image" />
         )}
       </div>
       <Toaster position="top-right" richColors />
